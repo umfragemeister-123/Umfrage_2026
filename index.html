@@ -18,6 +18,10 @@ label{display:block;font-weight:600;margin:14px 0 6px}
 button{margin:14px 8px 0 0;padding:11px 18px;border:0;border-radius:10px;background:var(--acc);color:#fff;font:inherit;font-weight:600;cursor:pointer}
 button:disabled{opacity:.5}
 #status{margin-top:12px;color:var(--muted);min-height:1.4em}
+.frage{font-weight:600;margin:18px 0 6px}
+.hint{font-weight:400;color:var(--muted);font-size:.85rem}
+.opt{display:flex;align-items:center;gap:10px;padding:10px 12px;margin:6px 0;border:1px solid var(--line);border-radius:10px;cursor:pointer}
+.opt input{width:20px;height:20px;margin:0;accent-color:var(--acc);flex:none}
 </style>
 </head>
 <body>
@@ -36,7 +40,7 @@ button:disabled{opacity:.5}
 var ACCESS_KEY = "bffde85e-8f7f-47d8-83b6-9842c18e5e0d";
 var FRAGEN = [
   "Wie alt bist du?",
-  "Welches Geschlecht fühlst du dich zugehörig?",
+  { frage: "Welches Geschlecht fühlst du dich zugehörig?", typ: "einzeln", optionen: ["männlich", "weiblich", "divers"]}
   "Spielst du Videospiele, wenn ja, welche und wie oft pro Woche?",
   "Zweifelst du manchmal an dir selbst, wenn ja, warum?",
   "Nenne ein Geheimnis über dich (geht in die Auswertung der Umfrage nicht ein)"
@@ -46,25 +50,56 @@ var qs = document.getElementById("qs");
 var status = document.getElementById("status");
 var send = document.getElementById("send");
 
-FRAGEN.forEach(function (frage, i) {
-  var l = document.createElement("label");
-  l.htmlFor = "a" + i;
-  l.textContent = (i + 1) + ". " + frage;
-  var t = document.createElement("textarea");
-  t.id = "a" + i;
-  t.maxLength = 1000;
-  qs.appendChild(l);
-  qs.appendChild(t);
+FRAGEN = FRAGEN.map(function (f) {
+  return typeof f === "string" ? { frage: f, typ: "text" } : f;
 });
+
+FRAGEN.forEach(function (f, i) {
+  var h = document.createElement("div");
+  h.className = "frage";
+  h.textContent = (i + 1) + ". " + f.frage;
+  if (f.typ === "mehrfach") {
+    var s = document.createElement("span");
+    s.className = "hint"; s.textContent = " (mehrere möglich)";
+    h.appendChild(s);
+  }
+  qs.appendChild(h);
+
+  if (f.typ === "einzeln" || f.typ === "mehrfach") {
+    f.optionen.forEach(function (o) {
+      var l = document.createElement("label");
+      l.className = "opt";
+      var inp = document.createElement("input");
+      inp.type = f.typ === "mehrfach" ? "checkbox" : "radio";
+      inp.name = "q" + i;
+      inp.value = o;
+      l.appendChild(inp);
+      l.appendChild(document.createTextNode(o));
+      qs.appendChild(l);
+    });
+  } else {
+    var t = document.createElement("textarea");
+    t.id = "a" + i; t.maxLength = 1000;
+    qs.appendChild(t);
+  }
+});
+
+function antwort(f, i) {
+  if (f.typ === "einzeln" || f.typ === "mehrfach") {
+    var gew = document.querySelectorAll('input[name="q' + i + '"]:checked');
+    return Array.prototype.map.call(gew, function (x) { return x.value; }).join(", ");
+  }
+  return document.getElementById("a" + i).value.trim();
+}
 
 send.addEventListener("click", function () {
   var name = document.getElementById("name").value.trim();
   if (!name) { status.textContent = "Bitte gib deinen Namen ein."; return; }
   var zeilen = [], beantwortet = 0;
-  FRAGEN.forEach(function (frage, i) {
-    var a = document.getElementById("a" + i).value.trim();
-    if (a) beantwortet++;
-    zeilen.push((i + 1) + ". " + frage + "\n" + (a || "(keine Antwort)") + "\n");
+  FRAGEN.forEach(function (f, i) {
+  var a = antwort(f, i);
+  if (a) beantwortet++;
+  zeilen.push((i + 1) + ". " + f.frage + "\n" + (a || "(keine Antwort)") + "\n");
   });
   if (!beantwortet) { status.textContent = "Bitte beantworte alle Fragen."; return; }
   if (ACCESS_KEY === "DEIN-ACCESS-KEY") { status.textContent = "Der Access Key fehlt noch im Skript."; return; }
@@ -82,7 +117,8 @@ send.addEventListener("click", function () {
   }).then(function (r) { return r.json(); }).then(function (j) {
     if (j && j.success) {
       status.textContent = "Danke für deine Zeit und Offenheit, " + name + "!";
-      FRAGEN.forEach(function (f, i) { document.getElementById("a" + i).value = ""; });
+      document.querySelectorAll("textarea").forEach(function (t) { t.value = ""; });
+document.querySelectorAll("input[type=checkbox],input[type=radio]").forEach(function (x) { x.checked = false; });
     } else {
       status.textContent = "Das Senden hat nicht geklappt.";
     }
