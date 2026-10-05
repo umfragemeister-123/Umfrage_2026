@@ -43,7 +43,7 @@ var FRAGEN = [
   { frage: "Welches Geschlecht fühlst du dich zugehörig?", typ: "einzeln", optionen: ["männlich", "weiblich", "divers"]},
   "Spielst du Videospiele, wenn ja, welche und wie oft pro Woche?",
   "Zweifelst du manchmal an dir selbst, wenn ja, warum?",
-  "Nenne ein Geheimnis über dich (geht in die Auswertung der Umfrage nicht ein)"
+  "Nenne ein Geheimnis über dich (geht in die Auswertung der Umfrage nicht ein)",
   "Gebe deine E-Mail Adresse an, um Spam zu vermeiden."
 ];
 
@@ -96,13 +96,13 @@ function antwort(f, i) {
 send.addEventListener("click", function () {
   var name = document.getElementById("name").value.trim();
   if (!name) { status.textContent = "Bitte gib deinen Namen ein."; return; }
-  var zeilen = [], beantwortet = 0;
-  FRAGEN.forEach(function (f, i) {
+  var zeilen = [], fehlt = [];
+FRAGEN.forEach(function (f, i) {
   var a = antwort(f, i);
-  if (a) beantwortet++;
+  if (!a && !f.optional) fehlt.push(i + 1);
   zeilen.push((i + 1) + ". " + f.frage + "\n" + (a || "(keine Antwort)") + "\n");
-  });
-  if (!beantwortet) { status.textContent = "Bitte beantworte alle Fragen."; return; }
+});
+if (fehlt.length) { status.textContent = "Bitte beantworte noch Frage " + fehlt.join(", ") + "."; return; }
   if (ACCESS_KEY === "DEIN-ACCESS-KEY") { status.textContent = "Der Access Key fehlt noch im Skript."; return; }
 
   send.disabled = true; status.textContent = "Wird gesendet …";
