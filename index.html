@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Umfrage 2026</title>
+<style>
+:root{--bg:#f6f5f1;--fg:#1f1f1c;--card:#fff;--line:#d9d6cc;--acc:#2f6f5e;--muted:#6b6a63}
+@media (prefers-color-scheme:dark){:root{--bg:#171815;--fg:#ecebe5;--card:#222420;--line:#3a3c36;--acc:#5fb59d;--muted:#a3a299}}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.5}
+main{max-width:600px;margin:0 auto;padding:24px 16px}
+h1{font-size:1.5rem;margin:0 0 6px}
+.sub{color:var(--muted);margin:0 0 18px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
+input,textarea{width:100%;box-sizing:border-box;padding:11px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--fg);font:inherit}
+textarea{min-height:70px;resize:vertical}
+label{display:block;font-weight:600;margin:14px 0 6px}
+button{margin:14px 8px 0 0;padding:11px 18px;border:0;border-radius:10px;background:var(--acc);color:#fff;font:inherit;font-weight:600;cursor:pointer}
+button:disabled{opacity:.5}
+#status{margin-top:12px;color:var(--muted);min-height:1.4em}
+</style>
+</head>
+<body>
+<main>
+  <h1>Umfrage 3. Quartal 2026</h1>
+  <p class="sub">Beantworte die Fragen wahrheitsgemäß.</p>
+  <div class="card">
+    <label for="name">Wie heißt du?</label>
+    <input id="name" maxlength="60" placeholder="Name">
+    <div id="qs"></div>
+    <button id="send">Absenden</button>
+    <div id="status"></div>
+  </div>
+</main>
+<script>
+var ACCESS_KEY = "bffde85e-8f7f-47d8-83b6-9842c18e5e0d";
+var FRAGEN = [
+  "Wie alt bist du?",
+  "Welches Geschlecht fühlst du dich zugehörig?",
+  "Spielst du Videospiele, wenn ja, welche und wie oft pro Woche?",
+  "Zweifelst du manchmal an dir selbst, wenn ja, warum?",
+  "Nenne ein Geheimnis über dich (geht in die Auswertung der Umfrage nicht ein)"
+];
+
+var qs = document.getElementById("qs");
+var status = document.getElementById("status");
+var send = document.getElementById("send");
+
+FRAGEN.forEach(function (frage, i) {
+  var l = document.createElement("label");
+  l.htmlFor = "a" + i;
+  l.textContent = (i + 1) + ". " + frage;
+  var t = document.createElement("textarea");
+  t.id = "a" + i;
+  t.maxLength = 1000;
+  qs.appendChild(l);
+  qs.appendChild(t);
+});
+
+send.addEventListener("click", function () {
+  var name = document.getElementById("name").value.trim();
+  if (!name) { status.textContent = "Bitte gib deinen Namen ein."; return; }
+  var zeilen = [], beantwortet = 0;
+  FRAGEN.forEach(function (frage, i) {
+    var a = document.getElementById("a" + i).value.trim();
+    if (a) beantwortet++;
+    zeilen.push((i + 1) + ". " + frage + "\n" + (a || "(keine Antwort)") + "\n");
+  });
+  if (!beantwortet) { status.textContent = "Bitte beantworte alle Fragen."; return; }
+  if (ACCESS_KEY === "DEIN-ACCESS-KEY") { status.textContent = "Der Access Key fehlt noch im Skript."; return; }
+
+  send.disabled = true; status.textContent = "Wird gesendet …";
+  fetch("https://api.web3forms.com/submit", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Accept": "application/json" },
+    body: JSON.stringify({
+      access_key: ACCESS_KEY,
+      subject: "Umfrage 2026: " + name,
+      from_name: name,
+      message: zeilen.join("\n")
+    })
+  }).then(function (r) { return r.json(); }).then(function (j) {
+    if (j && j.success) {
+      status.textContent = "Danke für deine Zeit und Offenheit, " + name + "!";
+      FRAGEN.forEach(function (f, i) { document.getElementById("a" + i).value = ""; });
+    } else {
+      status.textContent = "Das Senden hat nicht geklappt.";
+    }
+  }).catch(function () {
+    status.textContent = "Das Senden hat nicht geklappt. Bist du online?";
+  }).then(function () { send.disabled = false; });
+});
+</script>
+</body>
+</html>
