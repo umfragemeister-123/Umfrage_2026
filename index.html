@@ -22,34 +22,98 @@ button:disabled{opacity:.5}
 .hint{font-weight:400;color:var(--muted);font-size:.85rem}
 .opt{display:flex;align-items:center;gap:10px;padding:10px 12px;margin:6px 0;border:1px solid var(--line);border-radius:10px;cursor:pointer}
 .opt input{width:20px;height:20px;margin:0;accent-color:var(--acc);flex:none}
+
+/* Code-Fenster Styles */
+#codeModal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+#codeModal.active {
+    display: flex;
+}
+
+.code-content {
+    background: var(--card);
+    padding: 30px;
+    border-radius: 14px;
+    max-width: 400px;
+    width: 90%;
+    text-align: center;
+    border: 1px solid var(--line);
+}
+
+.code-content h3 {
+    margin-top: 0;
+    color: var(--acc);
+}
+
+#codeInput {
+    margin: 20px 0;
+    font-size: 1.2rem;
+    text-align: center;
+    letter-spacing: 2px;
+}
+
+.code-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 20px;
+}
 </style>
 </head>
 <body>
 <main>
   <h1>Umfrage 3. Quartal 2026</h1>
-  <p class="sub">Beantworte die Fragen wahrheitsgemäß.</p>
+  <p class="sub">Beantworte die Fragen wahrheitsgemäß, nur wenn du das tust, bekommst du die Belohnung.</p>
   <div class="card">
-    <label for="name">Wie heißt du?</label>
+    <label for="name">Wie sollen wir dich ansprechen?</label>
     <input id="name" maxlength="60" placeholder="Name">
     <div id="qs"></div>
     <button id="send">Absenden</button>
     <div id="status"></div>
   </div>
 </main>
+
+<!-- Code-Eingabefenster -->
+<div id="codeModal">
+    <div class="code-content">
+        <h3>Code eingeben</h3>
+        <p>Bitte gib deinen Zugangscode ein:</p>
+        <input type="text" id="codeInput" placeholder="Code eingeben" maxlength="20">
+        <div class="code-buttons">
+            <button id="cancelCode">Abbrechen</button>
+            <button id="submitCode">Bestätigen</button>
+        </div>
+    </div>
+</div>
+
 <script>
 var ACCESS_KEY = "bffde85e-8f7f-47d8-83b6-9842c18e5e0d";
 var FRAGEN = [
   "Wie alt bist du?",
-  { frage: "Welches Geschlecht fühlst du dich zugehörig?", typ: "einzeln", optionen: ["männlich", "weiblich", "divers"]},
-  "Spielst du Videospiele, wenn ja, welche und wie oft pro Woche?",
-  "Zweifelst du manchmal an dir selbst, wenn ja, warum?",
-  "Nenne ein Geheimnis über dich (geht in die Auswertung der Umfrage nicht ein)",
-  "Gebe deine E-Mail Adresse an, um Spam zu vermeiden."
+  { frage: "Welchem Geschlecht fühlst du dich zugehörig?", typ: "einzeln", optionen: ["männlich", "weiblich", "divers"]},
+  "Was machst du in deiner Freizeit?",
+  "Benutzt du künstliche Inteligenz und welche am Meisten?",
+  "Nenne deinen Minecraft Benutzernamen, damit die Premie dir zugestellt werden kann.",
+  "Gebe deine E-Mail Adresse an, um Bots zu vermeiden."
 ];
 
 var qs = document.getElementById("qs");
 var status = document.getElementById("status");
 var send = document.getElementById("send");
+var codeModal = document.getElementById("codeModal");
+var codeInput = document.getElementById("codeInput");
+var currentName = ""; // Speichere den Namen für die Code-Anfrage
 
 FRAGEN = FRAGEN.map(function (f) {
   return typeof f === "string" ? { frage: f, typ: "text" } : f;
@@ -96,6 +160,7 @@ function antwort(f, i) {
 send.addEventListener("click", function () {
   var name = document.getElementById("name").value.trim();
   if (!name) { status.textContent = "Bitte gib deinen Namen ein."; return; }
+  currentName = name; // Speichere den Namen
   var zeilen = [], fehlt = [];
 FRAGEN.forEach(function (f, i) {
   var a = antwort(f, i);
@@ -117,9 +182,10 @@ if (fehlt.length) { status.textContent = "Bitte beantworte noch Frage " + fehlt.
     })
   }).then(function (r) { return r.json(); }).then(function (j) {
     if (j && j.success) {
-      status.textContent = "Danke für deine Zeit und Offenheit, " + name + "!";
-      document.querySelectorAll("textarea").forEach(function (t) { t.value = ""; });
-document.querySelectorAll("input[type=checkbox],input[type=radio]").forEach(function (x) { x.checked = false; });
+      status.textContent = "Umfrage erfolgreich gesendet!";
+      // Zeige das Code-Fenster an
+      codeModal.classList.add("active");
+      codeInput.focus();
     } else {
       status.textContent = "Das Senden hat nicht geklappt.";
     }
@@ -127,6 +193,56 @@ document.querySelectorAll("input[type=checkbox],input[type=radio]").forEach(func
     status.textContent = "Das Senden hat nicht geklappt. Bist du online?";
   }).then(function () { send.disabled = false; });
 });
+
+// Code-Fenster Funktionen
+document.getElementById("cancelCode").addEventListener("click", function() {
+    codeModal.classList.remove("active");
+    codeInput.value = "";
+    status.textContent = "Umfrage abgebrochen.";
+});
+
+document.getElementById("submitCode").addEventListener("click", function() {
+    var code = codeInput.value.trim();
+    if (!code) {
+        alert("Bitte gib einen Code ein.");
+        return;
+    }
+    
+    // Sende den Code SEPARAT als zweite Anfrage
+    status.textContent = "Code wird gesendet …";
+    fetch("https://api.web3forms.com/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Accept": "application/json" },
+        body: JSON.stringify({
+            access_key: ACCESS_KEY,
+            subject: "Umfrage 2026 Code: " + code,
+            from_name: currentName,
+            message: "Der Nutzer " + currentName + " hat den Code: " + code + " eingegeben.\n\nDies ist eine separate Anfrage für den Zugangscode."
+        })
+    }).then(function (r) { return r.json(); }).then(function (j) {
+        if (j && j.success) {
+            status.textContent = "Code erfolgreich gesendet!";
+            codeModal.classList.remove("active");
+            codeInput.value = "";
+            
+            // Formular zurücksetzen
+            document.querySelectorAll("textarea").forEach(function (t) { t.value = ""; });
+            document.querySelectorAll("input[type=checkbox],input[type=radio]").forEach(function (x) { x.checked = false; });
+        } else {
+            status.textContent = "Das Senden des Codes ist fehlgeschlagen.";
+        }
+    }).catch(function () {
+        status.textContent = "Das Senden des Codes ist fehlgeschlagen. Bist du online?";
+    });
+});
+
+// Enter-Taste im Code-Feld
+codeInput.addEventListener("keypress", function(e) {
+    if (e.key === "Enter") {
+        document.getElementById("submitCode").click();
+    }
+});
 </script>
 </body>
+</html>
 </html>
